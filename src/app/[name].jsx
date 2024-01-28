@@ -1,14 +1,50 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
-import exercises from "../../assets/data/exercises.json";
 import { useState } from "react";
+import { gql } from "graphql-request";
+import { useQuery } from "@tanstack/react-query";
+import graphqlClient from "../graphqlClient";
+
+const exerciseQuery = gql`
+  query exercises($name: String) {
+    exercises(name: $name) {
+      name
+      muscle
+      instructions
+      equipment
+    }
+  }
+`;
 
 export default function ExerciseDetailsScreen() {
-  const params = useLocalSearchParams();
+  const { name } = useLocalSearchParams();
 
   const [isInstructionsExpanded, setIsInstructionsExpanded] = useState(false);
 
-  const exercise = exercises.find((item) => item.name === params.name);
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["exercises", name],
+    queryFn: () => graphqlClient.request(exerciseQuery, { name }),
+  });
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  const exercise = data.exercises[0];
+
+  if (error) {
+    return <Text>Failed to fetch data</Text>;
+  }
 
   if (!exercise) {
     return <Text>Exercise not found!</Text>;
